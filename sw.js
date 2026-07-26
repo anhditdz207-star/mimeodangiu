@@ -5,7 +5,7 @@
    (that data never leaves their disk).
    ========================================================== */
 
-const CACHE_NAME = 'mimeo-data-v1';
+const CACHE_NAME = 'mimeo-data-v2';
 const SHELL_FILES = [
   './',
   './index.html',
