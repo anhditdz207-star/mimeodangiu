@@ -15,17 +15,59 @@ const hint = document.getElementById('hintText');
 const hiddenInput = document.getElementById('hiddenInput');
 const jackpotEl = document.getElementById('jackpot');
 const gate = document.getElementById('gate');
-const bgMusic = document.getElementById('bgMusic');
-const spinSound = document.getElementById('spinSound');
+
+/* ---- Web Audio API sound (no <audio> tags -> no iOS lock-screen
+   "Now Playing" widget, and no fighting over a single audio session) ---- */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const actx = new AudioCtx();
+const musicGain = actx.createGain();
+musicGain.gain.value = 0.5;
+musicGain.connect(actx.destination);
+const sfxGain = actx.createGain();
+sfxGain.gain.value = 1;
+sfxGain.connect(actx.destination);
+
+let musicBuffer = null, spinBuffer = null;
+let musicSource = null, spinSource = null;
 let musicStarted = false;
+
+function loadBuffer(url) {
+  return fetch(url).then((r) => r.arrayBuffer()).then((buf) => actx.decodeAudioData(buf));
+}
+loadBuffer('assets/backgroundmusic.mp3').then((b) => { musicBuffer = b; }).catch(() => {});
+loadBuffer('assets/Spinningsoundeffect.mp3').then((b) => { spinBuffer = b; }).catch(() => {});
+
 function startMusicOnce() {
-  if (musicStarted) return;
-  bgMusic.volume = 0.5;
-  bgMusic.play().then(() => { musicStarted = true; }).catch(() => {});
+  if (actx.state === 'suspended') actx.resume();
+  if (musicStarted || !musicBuffer) return;
+  musicSource = actx.createBufferSource();
+  musicSource.buffer = musicBuffer;
+  musicSource.loop = true;
+  musicSource.connect(musicGain);
+  musicSource.start(0);
+  musicStarted = true;
 }
 
-// Try to autoplay right away; browsers may block this without a gesture,
-// so also start on the very first tap/click/key anywhere on the page.
+function playSpinSound() {
+  if (actx.state === 'suspended') actx.resume();
+  if (!spinBuffer) return;
+  stopSpinSound();
+  spinSource = actx.createBufferSource();
+  spinSource.buffer = spinBuffer;
+  spinSource.loop = true;
+  spinSource.connect(sfxGain);
+  spinSource.start(0);
+}
+
+function stopSpinSound() {
+  if (!spinSource) return;
+  try { spinSource.stop(); } catch (e) {}
+  spinSource.disconnect();
+  spinSource = null;
+}
+
+// Try to start music right away; if blocked (no gesture yet / buffer not
+// loaded yet), also retry on the very first tap/click/key anywhere.
 startMusicOnce();
 ['click', 'touchend', 'keydown'].forEach((evt) => {
   gate.addEventListener(evt, startMusicOnce, { once: true });
@@ -85,10 +127,7 @@ leverBox.addEventListener('touchstart', (e) => { e.preventDefault(); pullLever()
 
 function pullLever() {
   startMusicOnce();
-  setTimeout(() => {
-    spinSound.currentTime = 0;
-    spinSound.play().catch(() => {});
-  }, 60);
+  playSpinSound();
   leverBox.classList.add('down');
   setTimeout(() => leverBox.classList.remove('down'), 250);
   leverBox.classList.add('bounce');
@@ -119,7 +158,7 @@ function randomGuessSpin() {
       d.textContent = result[i];
       r.classList.add('pop');
       setTimeout(() => r.classList.remove('pop'), 300);
-      if (i === N - 1) spinSound.pause();
+      if (i === N - 1) stopSpinSound();
     }, 400 + i * 180);
   });
 }
@@ -144,7 +183,7 @@ function checkPassword() {
       r.classList.add('pop');
       setTimeout(() => r.classList.remove('pop'), 300);
       if (i === N - 1) {
-        spinSound.pause();
+        stopSpinSound();
         setTimeout(() => (correct ? onSuccess() : onFail()), 200);
       }
     }, 400 + i * 180);
