@@ -28,7 +28,7 @@ function startMusicOnce() {
 // Try to autoplay right away; browsers may block this without a gesture,
 // so also start on the very first tap/click/key anywhere on the page.
 startMusicOnce();
-['click', 'touchstart', 'keydown'].forEach((evt) => {
+['click', 'touchend', 'keydown'].forEach((evt) => {
   document.addEventListener(evt, startMusicOnce, { once: true, passive: true });
 });
 
