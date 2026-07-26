@@ -19,14 +19,7 @@ const gate = document.getElementById('gate');
 /* ---- Web Audio API sound (no <audio> tags -> no iOS lock-screen
    "Now Playing" widget, and no fighting over a single audio session) ---- */
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-const actx = new AudioCtx();
-const musicGain = actx.createGain();
-musicGain.gain.value = 0.5;
-musicGain.connect(actx.destination);
-const sfxGain = actx.createGain();
-sfxGain.gain.value = 1;
-sfxGain.connect(actx.destination);
-
+let actx, musicGain, sfxGain;
 let musicBuffer = null, spinBuffer = null;
 let musicSource = null, spinSource = null;
 let musicStarted = false;
@@ -34,22 +27,46 @@ let musicStarted = false;
 function loadBuffer(url) {
   return fetch(url).then((r) => r.arrayBuffer()).then((buf) => actx.decodeAudioData(buf));
 }
-loadBuffer('assets/backgroundmusic.mp3').then((b) => { musicBuffer = b; }).catch(() => {});
-loadBuffer('assets/Spinningsoundeffect.mp3').then((b) => { spinBuffer = b; }).catch(() => {});
+
+function setupAudioContext() {
+  actx = new AudioCtx();
+  musicGain = actx.createGain();
+  musicGain.gain.value = 0.5;
+  musicGain.connect(actx.destination);
+  sfxGain = actx.createGain();
+  sfxGain.gain.value = 1;
+  sfxGain.connect(actx.destination);
+  loadBuffer('assets/backgroundmusic.mp3').then((b) => { musicBuffer = b; }).catch(() => {});
+  loadBuffer('assets/Spinningsoundeffect.mp3').then((b) => { spinBuffer = b; }).catch(() => {});
+}
+setupAudioContext();
+
+/** iOS sometimes fully CLOSES the context (not just suspends it) after the
+    page is backgrounded a while; a closed context can never resume, so we
+    have to rebuild it from scratch and restart music. */
+function ensureAudioContext() {
+  if (actx.state === 'closed') {
+    setupAudioContext();
+    musicStarted = false;
+    return;
+  }
+  if (actx.state === 'suspended') actx.resume();
+}
 
 function startMusicOnce() {
-  if (actx.state === 'suspended') actx.resume();
+  ensureAudioContext();
   if (musicStarted || !musicBuffer) return;
   musicSource = actx.createBufferSource();
   musicSource.buffer = musicBuffer;
   musicSource.loop = true;
   musicSource.connect(musicGain);
   musicSource.start(0);
+  musicSource.onended = () => { musicStarted = false; };
   musicStarted = true;
 }
 
 function playSpinSound() {
-  if (actx.state === 'suspended') actx.resume();
+  ensureAudioContext();
   if (!spinBuffer) return;
   stopSpinSound();
   spinSource = actx.createBufferSource();
