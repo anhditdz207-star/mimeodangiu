@@ -67,24 +67,16 @@ function stopSpinSound() {
 }
 
 // Try to start music right away; if blocked (no gesture yet / buffer not
-// loaded yet), also retry on the very first tap/click/key anywhere.
+// loaded yet), retry on ANY tap/click/key anywhere on the page, for as
+// long as it hasn't successfully started yet (startMusicOnce is a no-op
+// once it has). Also covers resuming after the screen was locked.
 startMusicOnce();
 ['click', 'touchend', 'keydown'].forEach((evt) => {
-  gate.addEventListener(evt, startMusicOnce, { once: true });
+  document.addEventListener(evt, startMusicOnce, { passive: true });
 });
-
-// Locking the screen / switching away suspends the AudioContext on iOS and
-// it does NOT resume itself. Try to resume automatically when the page
-// becomes visible/focused again, and also keep a persistent (non-"once")
-// tap fallback in case iOS still needs a fresh gesture.
-function resumeIfSuspended() {
-  if (actx.state === 'suspended') actx.resume();
-}
-document.addEventListener('visibilitychange', () => { if (!document.hidden) resumeIfSuspended(); });
-window.addEventListener('pageshow', resumeIfSuspended);
-window.addEventListener('focus', resumeIfSuspended);
-document.addEventListener('click', resumeIfSuspended);
-document.addEventListener('touchend', resumeIfSuspended);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) startMusicOnce(); });
+window.addEventListener('pageshow', startMusicOnce);
+window.addEventListener('focus', startMusicOnce);
 
 let reels = [];
 let spinTimers = [];
