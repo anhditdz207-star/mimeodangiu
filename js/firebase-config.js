@@ -1,4 +1,4 @@
-onst firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyAXWUyS-fO9fUG8yXRmvnfExwBmaXHNfu0",
   authDomain: "mimeo-data.firebaseapp.com",
   projectId: "mimeo-data",
