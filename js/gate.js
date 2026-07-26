@@ -16,13 +16,34 @@ const hiddenInput = document.getElementById('hiddenInput');
 const jackpotEl = document.getElementById('jackpot');
 const gate = document.getElementById('gate');
 
-/* ---- Web Audio API sound (no <audio> tags -> no iOS lock-screen
-   "Now Playing" widget, and no fighting over a single audio session) ---- */
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let actx, musicGain, sfxGain;
-let musicBuffer = null, spinBuffer = null;
-let musicSource = null, spinSource = null;
+/* ---- Background music: real <audio> element on purpose.
+   Only an <audio>/<video> element gets an OS media session on iOS,
+   which is REQUIRED for the music to keep playing after the screen
+   locks or the app is backgrounded — Web Audio API alone cannot do
+   this. We label it explicitly via MediaSession so the lock-screen
+   widget always shows "Mimeo Data", never the spin sound. ---- */
+const bgMusic = document.getElementById('bgMusic');
 let musicStarted = false;
+
+function startMusicOnce() {
+  if (musicStarted) {
+    if (bgMusic.paused) bgMusic.play().catch(() => {}); // resume after lock screen
+    return;
+  }
+  bgMusic.volume = 0.5;
+  bgMusic.play().then(() => {
+    musicStarted = true;
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: 'Mimeo Data' });
+    }
+  }).catch(() => {});
+}
+
+/* ---- Spin sound: Web Audio API on purpose — it never registers an
+   OS media session, so it can never "steal" the Now Playing widget
+   away from bgMusic, and it mixes freely alongside it. ---- */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx, sfxGain, spinBuffer = null, spinSource = null;
 
 function loadBuffer(url) {
   return fetch(url).then((r) => r.arrayBuffer()).then((buf) => actx.decodeAudioData(buf));
@@ -30,43 +51,16 @@ function loadBuffer(url) {
 
 function setupAudioContext() {
   actx = new AudioCtx();
-  musicGain = actx.createGain();
-  musicGain.gain.value = 0.5;
-  musicGain.connect(actx.destination);
   sfxGain = actx.createGain();
   sfxGain.gain.value = 1;
   sfxGain.connect(actx.destination);
-  loadBuffer('assets/backgroundmusic.mp3').then((b) => { musicBuffer = b; }).catch(() => {});
   loadBuffer('assets/Spinningsoundeffect.mp3').then((b) => { spinBuffer = b; }).catch(() => {});
 }
 setupAudioContext();
 
-/** iOS sometimes fully CLOSES the context (not just suspends it) after the
-    page is backgrounded a while; a closed context can never resume, so we
-    have to rebuild it from scratch and restart music. */
-function ensureAudioContext() {
-  if (actx.state === 'closed') {
-    setupAudioContext();
-    musicStarted = false;
-    return;
-  }
-  if (actx.state === 'suspended') actx.resume();
-}
-
-function startMusicOnce() {
-  ensureAudioContext();
-  if (musicStarted || !musicBuffer) return;
-  musicSource = actx.createBufferSource();
-  musicSource.buffer = musicBuffer;
-  musicSource.loop = true;
-  musicSource.connect(musicGain);
-  musicSource.start(0);
-  musicSource.onended = () => { musicStarted = false; };
-  musicStarted = true;
-}
-
 function playSpinSound() {
-  ensureAudioContext();
+  if (actx.state === 'closed') { setupAudioContext(); }
+  else if (actx.state === 'suspended') { actx.resume(); }
   if (!spinBuffer) return;
   stopSpinSound();
   spinSource = actx.createBufferSource();
@@ -83,10 +77,9 @@ function stopSpinSound() {
   spinSource = null;
 }
 
-// Try to start music right away; if blocked (no gesture yet / buffer not
-// loaded yet), retry on ANY tap/click/key anywhere on the page, for as
-// long as it hasn't successfully started yet (startMusicOnce is a no-op
-// once it has). Also covers resuming after the screen was locked.
+// Try to start music right away; if blocked (no gesture yet), retry on
+// ANY tap/click/key anywhere, and also on returning from a locked screen
+// or another app (visibilitychange/pageshow/focus).
 startMusicOnce();
 ['click', 'touchend', 'keydown'].forEach((evt) => {
   document.addEventListener(evt, startMusicOnce, { passive: true });
