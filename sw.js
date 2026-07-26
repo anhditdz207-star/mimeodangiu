@@ -5,7 +5,7 @@
    (that data never leaves their disk).
    ========================================================== */
 
-const CACHE_NAME = 'mimeo-data-v1';
+const CACHE_NAME = 'mimeo-data-v2';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -51,15 +51,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return; // let Google Fonts etc pass through normally
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((res) => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return res;
-      }).catch(() => cached);
-    })
+    fetch(event.request).then((res) => {
+      if (res.ok) {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return res;
+    }).catch(() => caches.match(event.request))
   );
 });
