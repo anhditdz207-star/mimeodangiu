@@ -86,8 +86,10 @@ leverBox.addEventListener('touchstart', (e) => { e.preventDefault(); pullLever()
 
 function pullLever() {
   startMusicOnce();
-  spinSound.currentTime = 0;
-  spinSound.play().catch(() => {});
+  setTimeout(() => {
+    spinSound.currentTime = 0;
+    spinSound.play().catch(() => {});
+  }, 60);
   leverBox.classList.add('down');
   setTimeout(() => leverBox.classList.remove('down'), 250);
   leverBox.classList.add('bounce');
