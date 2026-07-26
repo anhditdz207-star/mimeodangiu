@@ -73,6 +73,19 @@ startMusicOnce();
   gate.addEventListener(evt, startMusicOnce, { once: true });
 });
 
+// Locking the screen / switching away suspends the AudioContext on iOS and
+// it does NOT resume itself. Try to resume automatically when the page
+// becomes visible/focused again, and also keep a persistent (non-"once")
+// tap fallback in case iOS still needs a fresh gesture.
+function resumeIfSuspended() {
+  if (actx.state === 'suspended') actx.resume();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) resumeIfSuspended(); });
+window.addEventListener('pageshow', resumeIfSuspended);
+window.addEventListener('focus', resumeIfSuspended);
+document.addEventListener('click', resumeIfSuspended);
+document.addEventListener('touchend', resumeIfSuspended);
+
 let reels = [];
 let spinTimers = [];
 let enteredDigits = "";
