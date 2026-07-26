@@ -1,4 +1,3 @@
-alert("firebase-config loaded");
 
 const firebaseConfig = {
   apiKey: "AIzaSyAXWUyS-fO9fUG8yXRmvnfExwBmaXHNfu0",
