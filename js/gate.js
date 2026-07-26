@@ -20,9 +20,8 @@ const spinSound = document.getElementById('spinSound');
 let musicStarted = false;
 function startMusicOnce() {
   if (musicStarted) return;
-  musicStarted = true;
   bgMusic.volume = 0.5;
-  bgMusic.play().catch(() => {});
+  bgMusic.play().then(() => { musicStarted = true; }).catch(() => {});
 }
 
 // Try to autoplay right away; browsers may block this without a gesture,
