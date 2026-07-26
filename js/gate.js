@@ -29,7 +29,7 @@ function startMusicOnce() {
 // so also start on the very first tap/click/key anywhere on the page.
 startMusicOnce();
 ['click', 'touchend', 'keydown'].forEach((evt) => {
-  document.addEventListener(evt, startMusicOnce, { once: true, passive: true });
+  gate.addEventListener(evt, startMusicOnce, { once: true });
 });
 
 let reels = [];
