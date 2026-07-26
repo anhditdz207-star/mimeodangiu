@@ -15,6 +15,15 @@ const hint = document.getElementById('hintText');
 const hiddenInput = document.getElementById('hiddenInput');
 const jackpotEl = document.getElementById('jackpot');
 const gate = document.getElementById('gate');
+const bgMusic = document.getElementById('bgMusic');
+const spinSound = document.getElementById('spinSound');
+let musicStarted = false;
+function startMusicOnce() {
+  if (musicStarted) return;
+  musicStarted = true;
+  bgMusic.volume = 0.5;
+  bgMusic.play().catch(() => {});
+}
 
 let reels = [];
 let spinTimers = [];
@@ -30,7 +39,7 @@ for (let i = 0; i < N; i++) {
   r.appendChild(d);
   if (i === N - 1) {
     r.classList.add('last');
-    r.addEventListener('click', () => hiddenInput.focus());
+    r.addEventListener('click', () => { startMusicOnce(); hiddenInput.focus(); });
   }
   panel.appendChild(r);
   reels.push(r);
@@ -69,6 +78,9 @@ leverBox.addEventListener('click', pullLever);
 leverBox.addEventListener('touchstart', (e) => { e.preventDefault(); pullLever(); }, { passive: false });
 
 function pullLever() {
+  startMusicOnce();
+  spinSound.currentTime = 0;
+  spinSound.play().catch(() => {});
   leverBox.classList.add('down');
   setTimeout(() => leverBox.classList.remove('down'), 250);
   leverBox.classList.add('bounce');
@@ -99,6 +111,7 @@ function randomGuessSpin() {
       d.textContent = result[i];
       r.classList.add('pop');
       setTimeout(() => r.classList.remove('pop'), 300);
+      if (i === N - 1) spinSound.pause();
     }, 400 + i * 180);
   });
 }
@@ -122,7 +135,10 @@ function checkPassword() {
       d.textContent = '•';
       r.classList.add('pop');
       setTimeout(() => r.classList.remove('pop'), 300);
-      if (i === N - 1) setTimeout(() => (correct ? onSuccess() : onFail()), 200);
+      if (i === N - 1) {
+        spinSound.pause();
+        setTimeout(() => (correct ? onSuccess() : onFail()), 200);
+      }
     }, 400 + i * 180);
   });
 }
