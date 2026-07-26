@@ -6,7 +6,7 @@
    - Tự xóa cache cũ khi cập nhật phiên bản.
    ========================================================== */
 
-const CACHE_NAME = "mimeo-data-v3";
+const CACHE_NAME = "mimeo-data-v4";
 
 const FILES_TO_CACHE = [
   "./",
